@@ -178,10 +178,10 @@ def method1_table(items):
             esc(x['冷氣kW'] or '—'), esc(x['能效等級'] or '—'), esc(x['CSPF'] or '—'),
             tags_html(x), money(x['市價']), money(x['優惠價']),
             esc(x['產地'] or '—'), warranty)
-    return '<table class="cmp">%s<tbody>%s</tbody></table>' % (head, body)
+    return '<table class="cmp m1">%s<tbody>%s</tbody></table>' % (head, body)
 
 def build_method1():
-    out = ['<h2 class="mtitle">比較方式一　同噸數（KW／坪數）跨品牌比較</h2>',
+    out = ['<h2 class="mtitle m1">比較方式一　同噸數（KW／坪數）跨品牌比較</h2>',
            '<p class="mdesc">依冷氣能力 KW（對應適用坪數）分級，將各品牌同級距機型並列，方便比較<strong>功能與價格</strong>。同一級距內依品牌、價格排序。</p>']
     for title, lo, hi in BANDS:
         items = [x for x in d if (to_num(x['冷氣kW']) is not None and lo <= to_num(x['冷氣kW']) <= hi)]
@@ -212,10 +212,10 @@ def method2_table(items):
             model, esc(type_short(x['細類'])), esc(x['冷氣kW'] or '—'), esc(x['暖氣kW'] or '—'),
             esc(x['能效等級'] or '—'), esc(x['CSPF'] or '—'), tags_html(x),
             money(x['市價']), money(x['優惠價']))
-    return '<table class="cmp">%s<tbody>%s</tbody></table>' % (head, body)
+    return '<table class="cmp m2">%s<tbody>%s</tbody></table>' % (head, body)
 
 def build_method2():
-    out = ['<h2 class="mtitle">比較方式二　同一廠商 2–10 KW 全系列比較</h2>',
+    out = ['<h2 class="mtitle m2">比較方式二　同一廠商 2–10 KW 全系列比較</h2>',
            '<p class="mdesc">以品牌為單位，列出該廠商 2–10 KW 各機型的<strong>功能與價格</strong>，依冷氣能力由小到大排序，方便選定品牌後挑坪數。</p>']
     for b in brand_order:
         items = [x for x in d if x['品牌']==b]
@@ -346,8 +346,10 @@ JS = '''
 
 # ---------- CSS ----------
 CSS = '''
-:root{ --line:#000; --hdr:#111; --zebra:#eef0f2; --band:#000; }
-*{ box-sizing:border-box; }
+:root{ --line:#000; --hdr:#111; --zebra:#eef0f2; --band:#000;
+  --teal:#0E5C63; --plum:#6D2E46; --navy:#0B4F6C;
+  --gold:#FCEFD6; --green:#E4F1E4; }
+*{ box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 html,body{ margin:0; padding:0; background:#f4f4f4; color:#000;
   font-family:"Microsoft JhengHei","Noto Sans TC","PingFang TC","Heiti TC",sans-serif;
   font-size:15px; line-height:1.5; }
@@ -409,7 +411,13 @@ td.lg-tag{ width:170px; text-align:center; }
 .btype{ font-size:18px; margin:6px 0 0; font-weight:700; }
 .mtitle+.mdesc{ margin-bottom:16px; }
 /* 篩選列 */
-.filterbar{ position:sticky; top:0; z-index:50; background:#fffbe6; border:3px solid #000;
+.vernav{ position:sticky; top:0; z-index:60; background:#fff; border-bottom:2px solid var(--teal);
+  padding:8px 14px; display:flex; gap:10px; align-items:center; }
+.vernav a{ font-size:16px; font-weight:800; text-decoration:none; color:var(--teal);
+  border:2px solid var(--teal); border-radius:6px; padding:5px 12px; cursor:pointer; }
+.vernav a.cur{ background:var(--teal); color:#fff; }
+.vnhint{ color:#888; font-size:13px; }
+.filterbar{ position:sticky; top:52px; z-index:50; background:#fffbe6; border:3px solid #000;
   max-width:1180px; margin:10px auto 0; padding:10px 14px; }
 .fb-title{ font-size:16px; font-weight:800; margin-bottom:6px; }
 .fb-row{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:6px 0; }
@@ -421,11 +429,35 @@ td.lg-tag{ width:170px; text-align:center; }
   padding:7px 16px; border-radius:6px; cursor:pointer; }
 .fb-summary{ font-size:17px; font-weight:800; margin-left:14px; }
 .fb-actions{ margin-top:2px; }
+/* ===== 彩色主題（黑白列印仍高對比：深底白字／淺底深字） ===== */
+.mtitle.m1{ color:var(--teal); }
+.mtitle.m2{ color:var(--plum); }
+h3.band{ background:var(--teal); color:#fff; }
+table.cmp.m1 th{ background:var(--teal); }
+table.cmp.m2 th{ background:var(--plum); }
+table.cmp td.price{ background:var(--gold) !important; color:#1A1A1A; }
+table.cmp td.eff{ background:var(--green) !important; }
+.brand-head{ border-color:var(--plum); background:#faf3f6; }
+.brand-title h3{ color:var(--plum); }
+.cover{ background:var(--navy); color:#fff; }
+.cover h1{ color:#fff; }
+.cover .sub,.cover .brands,.cover .madeat,.cover .photo-cap,.cover .ref{ color:#e6eff3; }
+.cover .warn{ background:#fff; color:#000; }
+.cover .ac-svg rect,.cover .ac-svg circle,.cover .ac-svg path,.cover .ac-svg line{ stroke:#fff !important; }
+.cover .ac-svg text{ fill:#fff !important; }
+.cover-svgs > div{ background:#12637f; border:1px solid #3E8CA8; border-radius:8px; padding:8px 6px 4px; }
+.ctile{ border-color:#8fd0dd; background:#12637f; }
+.cover .legend{ background:transparent; color:#fff; }
+.cover .legend caption{ color:#fff; }
+.cover .legend td{ background:#12637f; color:#fff; border-color:#5a97ab; }
+.cover .legend .tag{ background:#fff; color:#000; }
+.filterbar{ border-color:var(--teal); background:#f2fbfb; }
+.fb-title{ color:var(--teal); }
 /* 列印 */
 @page{ size:A3 landscape; margin:8mm; }
 @media print{
   html,body{ background:#fff; font-size:12.5px; }
-  .filterbar{ display:none !important; }
+  .filterbar,.vernav{ display:none !important; }
   .page{ width:auto; min-height:auto; margin:0; padding:0 0 14mm; box-shadow:none;
     page-break-after:always; break-after:page; }
   .page:last-child{ page-break-after:auto; }
@@ -442,8 +474,13 @@ td.lg-tag{ width:170px; text-align:center; }
 }
 '''
 
+# ---------- 版本切換列 ----------
+VERNAV = ('<div class="vernav"><a class="cur">📊 版本一：互動篩選表</a>'
+          '<a href="deck.html">📑 版本二：簡報式</a>'
+          '<span class="vnhint">（此列僅螢幕顯示，列印時隱藏）</span></div>')
+
 # ---------- 組裝 ----------
-body = filterbar() + cover() + build_method1() + build_method2()
+body = VERNAV + filterbar() + cover() + build_method1() + build_method2()
 html_doc = '''<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
