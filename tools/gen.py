@@ -48,6 +48,21 @@ def tags_html(x):
     if not ts: return '<span class="notag">—</span>'
     return ''.join('<span class="tag">%s</span>' % esc(t) for t in ts)
 
+FEAT_TOK = {'WiFi智慧':'wifi','自動清潔':'clean','空氣清淨':'air','抗菌防霉':'anti',
+            '單獨除濕':'dehum','防鏽耐蝕':'rust','R32環保冷媒':'r32','舒眠':'sleep','靜音':'quiet'}
+def feat_tokens(x):
+    return [FEAT_TOK[t] for t in feats(x) if t in FEAT_TOK]
+
+def row_attrs(x):
+    cat = x['細類'] or ''
+    heat = '冷暖' if '冷暖' in cat else ('冷專' if '冷專' in cat else '其他')
+    p = to_num(x['優惠價']); kw = to_num(x['冷氣kW'])
+    return (' class="drow" data-model="%s" data-brand="%s" data-heat="%s" data-price="%s" data-kw="%s" data-feat="%s"'
+            % (esc(x['型號']), esc(x['品牌']), heat,
+               str(int(round(p))) if p is not None else '',
+               ('%g' % kw) if kw is not None else '',
+               ' '.join(feat_tokens(x))))
+
 def type_short(cat):
     cat = cat or ''
     heat = '冷暖' if '冷暖' in cat else ('冷專' if '冷專' in cat else '')
@@ -154,10 +169,11 @@ def method1_table(items):
         prod = '<span class="pname">%s</span><br><span class="model">型號：%s</span>' % (
             esc(x['產品名稱']), esc(x['型號']))
         warranty = '%s／壓縮機%s' % (esc(x['全機保固'] or '—'), esc(x['壓縮機保固'] or '—'))
-        body += ('<tr><td class="brand">%s</td><td class="prod">%s</td><td>%s</td>'
+        body += ('<tr%s><td class="brand">%s</td><td class="prod">%s</td><td>%s</td>'
                  '<td class="num">%s</td><td class="eff">%s</td><td class="num">%s</td>'
                  '<td class="feat">%s</td><td class="num">%s</td><td class="num price">%s</td>'
                  '<td class="small">%s<br>%s</td></tr>') % (
+            row_attrs(x),
             esc(x['品牌']), prod, esc(type_short(x['細類'])),
             esc(x['冷氣kW'] or '—'), esc(x['能效等級'] or '—'), esc(x['CSPF'] or '—'),
             tags_html(x), money(x['市價']), money(x['優惠價']),
@@ -172,9 +188,9 @@ def build_method1():
         if not items: continue
         items.sort(key=lambda x: (brand_order.index(x['品牌']) if x['品牌'] in brand_order else 99,
                                   to_num(x['冷氣kW']) or 0, to_num(x['優惠價']) or 0))
-        out.append('<section class="page">')
+        out.append('<section class="page" data-sec="m1">')
         out.append(warn_banner())
-        out.append('<h3 class="band">%s　<span class="cnt">共 %d 款</span></h3>' % (esc(title), len(items)))
+        out.append('<h3 class="band">%s　<span class="cnt">顯示 <span class="vcount">%d</span> / 共 %d 款</span></h3>' % (esc(title), len(items), len(items)))
         out.append(method1_table(items))
         out.append(page_footer('比較方式一・同噸數比較'))
         out.append('</section>')
@@ -189,9 +205,10 @@ def method2_table(items):
     for x in items:
         model = '<span class="pname">%s</span><br><span class="model">%s</span>' % (
             esc(x['型號']), esc(x['產品名稱']))
-        body += ('<tr><td class="prod">%s</td><td>%s</td><td class="num">%s</td><td class="num">%s</td>'
+        body += ('<tr%s><td class="prod">%s</td><td>%s</td><td class="num">%s</td><td class="num">%s</td>'
                  '<td class="eff">%s</td><td class="num">%s</td><td class="feat">%s</td>'
                  '<td class="num">%s</td><td class="num price">%s</td></tr>') % (
+            row_attrs(x),
             model, esc(type_short(x['細類'])), esc(x['冷氣kW'] or '—'), esc(x['暖氣kW'] or '—'),
             esc(x['能效等級'] or '—'), esc(x['CSPF'] or '—'), tags_html(x),
             money(x['市價']), money(x['優惠價']))
@@ -203,13 +220,13 @@ def build_method2():
     for b in brand_order:
         items = [x for x in d if x['品牌']==b]
         items.sort(key=lambda x: (to_num(x['冷氣kW']) or 0, to_num(x['優惠價']) or 0))
-        out.append('<section class="page">')
+        out.append('<section class="page" data-sec="m2">')
         out.append(warn_banner())
         out.append('<div class="brand-head">')
         out.append('<div class="brand-photo">%s<div class="photo-cap">%s 代表機型示意圖<br><span class="ref">（示意圖，僅供參考）</span></div></div>' % (
             brand_svg(brand_dom.get(b,'')), esc(b)))
-        out.append('<div class="brand-title"><h3>%s</h3><p class="btype">主力機型：%s　｜　本表 %d 款</p></div>' % (
-            esc(b), esc(type_short(brand_dom.get(b,''))), len(items)))
+        out.append('<div class="brand-title"><h3>%s</h3><p class="btype">主力機型：%s　｜　本表 顯示 <span class="vcount">%d</span> / 共 %d 款</p></div>' % (
+            esc(b), esc(type_short(brand_dom.get(b,''))), len(items), len(items)))
         out.append('</div>')
         out.append(method2_table(items))
         out.append(page_footer('比較方式二・'+b))
@@ -246,6 +263,86 @@ def cover():
 </section>''' % (warn_banner(), total, brands, esc(blist),
                  svg_split(), svg_window(), svg_multi(),
                  legend_box(), MAKETIME, page_footer('封面・說明'))
+
+# ---------- 篩選列 (螢幕操作用，列印時隱藏) ----------
+def filterbar():
+    brand_btns = ''.join(
+        '<label class="chip"><input type="checkbox" class="f-brand" value="%s">%s</label>' % (esc(b), esc(b))
+        for b in brand_order)
+    feat_opts = [('wifi','WiFi智慧'),('clean','自動清潔'),('air','空氣清淨'),
+                 ('anti','抗菌防霉'),('dehum','單獨除濕')]
+    feat_btns = ''.join(
+        '<label class="chip"><input type="checkbox" class="f-feat" value="%s">%s</label>' % (t, esc(n))
+        for t,n in feat_opts)
+    return '''<div class="filterbar" id="filterbar">
+  <div class="fb-title">🔎 篩選（此區僅供螢幕操作，列印時不會出現；篩選後可直接列印篩選結果）</div>
+  <div class="fb-row"><span class="fb-lab">冷／暖</span>
+    <label class="chip"><input type="radio" name="heat" class="f-heat" value="" checked>全部</label>
+    <label class="chip"><input type="radio" name="heat" class="f-heat" value="冷暖">冷暖兩用</label>
+    <label class="chip"><input type="radio" name="heat" class="f-heat" value="冷專">僅冷氣</label>
+  </div>
+  <div class="fb-row"><span class="fb-lab">寬頻優惠價</span>
+    <label class="chip"><input type="radio" name="price" class="f-price" value="" checked>全部</label>
+    <label class="chip"><input type="radio" name="price" class="f-price" value="0-20000">2 萬以下</label>
+    <label class="chip"><input type="radio" name="price" class="f-price" value="20000-30000">2–3 萬</label>
+    <label class="chip"><input type="radio" name="price" class="f-price" value="30000-50000">3–5 萬</label>
+    <label class="chip"><input type="radio" name="price" class="f-price" value="50000-99999999">5 萬以上</label>
+  </div>
+  <div class="fb-row"><span class="fb-lab">品牌</span>%s</div>
+  <div class="fb-row"><span class="fb-lab">功能（需全含）</span>%s</div>
+  <div class="fb-row fb-actions">
+    <button type="button" id="btn-clear" class="fb-btn">✕ 清除全部篩選</button>
+    <span id="fb-summary" class="fb-summary"></span>
+  </div>
+</div>''' % (brand_btns, feat_btns)
+
+# ---------- JS ----------
+JS = '''
+(function(){
+  function $(s,r){return (r||document).querySelectorAll(s);}
+  var rows = Array.prototype.slice.call($('tr.drow'));
+  var summary = document.getElementById('fb-summary');
+  function heatVal(){var e=document.querySelector('.f-heat:checked');return e?e.value:'';}
+  function priceVal(){var e=document.querySelector('.f-price:checked');return e?e.value:'';}
+  function checkedVals(cls){return Array.prototype.map.call($('.'+cls+':checked'),function(e){return e.value;});}
+  function apply(){
+    var heat=heatVal(), price=priceVal();
+    var brands=checkedVals('f-brand'), feats=checkedVals('f-feat');
+    var pr=null; if(price){var a=price.split('-');pr=[parseInt(a[0],10),parseInt(a[1],10)];}
+    var uniq={};
+    rows.forEach(function(r){
+      var ok=true;
+      if(heat && r.getAttribute('data-heat')!==heat) ok=false;
+      if(ok && brands.length && brands.indexOf(r.getAttribute('data-brand'))<0) ok=false;
+      if(ok && pr){var p=parseInt(r.getAttribute('data-price'),10);
+        if(isNaN(p)||p<pr[0]||p>pr[1]) ok=false;}
+      if(ok && feats.length){var rf=(r.getAttribute('data-feat')||'').split(' ');
+        for(var i=0;i<feats.length;i++){if(rf.indexOf(feats[i])<0){ok=false;break;}}}
+      r.style.display= ok?'':'none';
+      if(ok) uniq[r.getAttribute('data-model')]=1;
+    });
+    var shown=Object.keys(uniq).length;
+    // 各區塊：更新顯示筆數、無資料則整頁隱藏
+    Array.prototype.forEach.call($('section.page[data-sec]'),function(sec){
+      var vis=sec.querySelectorAll('tr.drow:not([style*="none"])').length;
+      var vc=sec.querySelector('.vcount'); if(vc) vc.textContent=vis;
+      sec.style.display = vis? '':'none';
+    });
+    summary.textContent='符合條件：共 '+shown+' 款機型（兩種比較表同步套用）';
+  }
+  Array.prototype.forEach.call($('.f-heat,.f-price,.f-brand,.f-feat'),function(e){
+    e.addEventListener('change',apply);
+  });
+  var clr=document.getElementById('btn-clear');
+  if(clr) clr.addEventListener('click',function(){
+    Array.prototype.forEach.call($('.f-brand,.f-feat'),function(e){e.checked=false;});
+    document.querySelector('.f-heat[value=""]').checked=true;
+    document.querySelector('.f-price[value=""]').checked=true;
+    apply();
+  });
+  apply();
+})();
+'''
 
 # ---------- CSS ----------
 CSS = '''
@@ -311,10 +408,24 @@ td.lg-tag{ width:170px; text-align:center; }
 .brand-title h3{ font-size:34px; margin:0; }
 .btype{ font-size:18px; margin:6px 0 0; font-weight:700; }
 .mtitle+.mdesc{ margin-bottom:16px; }
+/* 篩選列 */
+.filterbar{ position:sticky; top:0; z-index:50; background:#fffbe6; border:3px solid #000;
+  max-width:1180px; margin:10px auto 0; padding:10px 14px; }
+.fb-title{ font-size:16px; font-weight:800; margin-bottom:6px; }
+.fb-row{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:6px 0; }
+.fb-lab{ font-size:16px; font-weight:800; min-width:120px; }
+.chip{ display:inline-flex; align-items:center; gap:5px; border:2px solid #000; border-radius:6px;
+  padding:5px 10px; font-size:15px; font-weight:700; cursor:pointer; background:#fff; }
+.chip input{ width:18px; height:18px; }
+.fb-btn{ border:2.5px solid #000; background:#000; color:#fff; font-size:16px; font-weight:800;
+  padding:7px 16px; border-radius:6px; cursor:pointer; }
+.fb-summary{ font-size:17px; font-weight:800; margin-left:14px; }
+.fb-actions{ margin-top:2px; }
 /* 列印 */
 @page{ size:A3 landscape; margin:8mm; }
 @media print{
   html,body{ background:#fff; font-size:12.5px; }
+  .filterbar{ display:none !important; }
   .page{ width:auto; min-height:auto; margin:0; padding:0 0 14mm; box-shadow:none;
     page-break-after:always; break-after:page; }
   .page:last-child{ page-break-after:auto; }
@@ -332,7 +443,7 @@ td.lg-tag{ width:170px; text-align:center; }
 '''
 
 # ---------- 組裝 ----------
-body = cover() + build_method1() + build_method2()
+body = filterbar() + cover() + build_method1() + build_method2()
 html_doc = '''<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
@@ -343,8 +454,9 @@ html_doc = '''<!DOCTYPE html>
 </head>
 <body>
 %s
+<script>%s</script>
 </body>
-</html>''' % (CSS, body)
+</html>''' % (CSS, body, JS)
 
 open(os.path.join(OUTDIR,'index.html'),'w',encoding='utf-8').write(html_doc)
 print('OK 產生', os.path.join(OUTDIR,'index.html'), '大小', len(html_doc))
